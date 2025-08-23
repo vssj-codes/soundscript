@@ -1,12 +1,14 @@
 require("dotenv").config();
 const express = require("express");
 const connectDB = require("./config/database");
-const Transcription = require("./models/Transcription");
+const transcriptionRoutes = require("./routes/transcriptionRoutes");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+app.use("/transcriptions", transcriptionRoutes);
 
 connectDB()
   .then(async () => {

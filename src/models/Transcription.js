@@ -5,14 +5,15 @@ const TranscriptionSchema = new mongoose.Schema(
     audioUrl: {
       type: String,
       required: true,
+      unique: true,
     },
     status: {
       type: String,
       enum: {
         values: ["queued", "processing", "completed", "failed"],
-        default: "queued",
         message: `{VALUE} is not a valid status.`,
       },
+      default: "queued",
       text: {
         type: String,
         default: null,
