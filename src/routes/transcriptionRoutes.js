@@ -4,6 +4,8 @@ const router = express.Router();
 const Transcription = require("../models/Transcription");
 const isAudioUrlValid = require("../utils/validateAudioUrl");
 const isObjectIdValid = require("../utils/validateObjectId");
+const downloadAudio = require("../utils/downloadAudio");
+
 router.post("/", async (req, res) => {
   const { audioUrl } = req.body;
 
@@ -12,15 +14,29 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    // Create new transcription with initial "queued" status
     const transcription = await Transcription.create({ audioUrl });
 
-    setTimeout(async () => {
-      transcription.status = "completed";
+    // Process asynchronously so API responds immediately
+    setImmediate(async () => {
+      try {
+        transcription.status = "processing";
+        await transcription.save();
 
-      transcription.text = `Mock transcription for ${audioUrl}`;
-      await transcription.save();
-    }, 3000);
+        // Try downloading with retries
+        const audioFile = await downloadAudio(audioUrl, 3, 1000);
 
+        transcription.status = "completed";
+        transcription.text = `Mock transcription for ${audioUrl}\n(${audioFile})`;
+        await transcription.save();
+      } catch (err) {
+        transcription.status = "failed";
+        transcription.text = err.message;
+        await transcription.save();
+      }
+    });
+
+    // Send response immediately
     res.status(201).json({
       id: transcription._id,
       audioUrl: transcription.audioUrl,
