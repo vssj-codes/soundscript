@@ -1,58 +1,55 @@
-const express = require("express");
-const router = express.Router();
+import { Router, Request, Response } from "express";
+import Transcription from "../models/Transcription";
+import isAudioUrlValid from "../utils/validateAudioUrl";
+import isObjectIdValid from "../utils/validateObjectId";
+import downloadAudio from "../utils/downloadAudio";
 
-const Transcription = require("../models/Transcription");
-const isAudioUrlValid = require("../utils/validateAudioUrl");
-const isObjectIdValid = require("../utils/validateObjectId");
-const downloadAudio = require("../utils/downloadAudio");
+const router = Router();
 
-router.post("/", async (req, res) => {
-  const { audioUrl } = req.body;
+router.post("/", async (req: Request, res: Response) => {
+  const { audioUrl } = req.body as { audioUrl?: string };
 
-  if (!isAudioUrlValid(audioUrl)) {
+  if (!audioUrl || !isAudioUrlValid(audioUrl)) {
     return res.status(400).json({ error: "Valid audio file URL is required" });
   }
 
   try {
-    // Create new transcription with initial "queued" status
     const transcription = await Transcription.create({ audioUrl });
 
-    // Process asynchronously so API responds immediately
     setImmediate(async () => {
       try {
         transcription.status = "processing";
         await transcription.save();
 
-        // Try downloading with retries
         const audioFile = await downloadAudio(audioUrl, 3, 1000);
 
         transcription.status = "completed";
         transcription.text = `Mock transcription for ${audioUrl}\n(${audioFile})`;
         await transcription.save();
-      } catch (err) {
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
         transcription.status = "failed";
-        transcription.text = err.message;
+        transcription.text = msg;
         await transcription.save();
       }
     });
 
-    // Send response immediately
-    res.status(201).json({
+    return res.status(201).json({
       id: transcription._id,
       audioUrl: transcription.audioUrl,
       status: transcription.status,
     });
-  } catch (err) {
-    if (err.code === 11000) {
+  } catch (err: any) {
+    if (err?.code === 11000) {
       return res
         .status(400)
         .json({ error: "Transcription for this URL already exists." });
     }
-    res.status(500).json({ error: "Something went wrong" });
+    return res.status(500).json({ error: "Something went wrong" });
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
 
   if (!isObjectIdValid(id)) {
@@ -66,23 +63,23 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Transcription not found" });
     }
 
-    res.json({
+    return res.json({
       id: transcription._id,
       audioUrl: transcription.audioUrl,
       status: transcription.status,
       text: transcription.text,
     });
-  } catch (err) {
-    res.status(500).json({ error: "Something went wrong" });
+  } catch {
+    return res.status(500).json({ error: "Something went wrong" });
   }
 });
 
-router.get("/", async (req, res) => {
+router.get("/", async (_req: Request, res: Response) => {
   try {
     const transcriptions = await Transcription.find().sort({ createdAt: -1 });
 
-    res.json(
-      transcriptions.map((t) => ({
+    return res.json(
+      transcriptions.map((t: any) => ({
         id: t._id,
         audioUrl: t.audioUrl,
         status: t.status,
@@ -90,8 +87,9 @@ router.get("/", async (req, res) => {
         createdAt: t.createdAt,
       }))
     );
-  } catch (err) {
-    res.status(500).json({ error: "Something went wrong" });
+  } catch {
+    return res.status(500).json({ error: "Something went wrong" });
   }
 });
-module.exports = router;
+
+export default router;
