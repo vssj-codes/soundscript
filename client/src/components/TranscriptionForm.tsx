@@ -47,7 +47,7 @@ export default function TranscriptionForm({
     if (!isValidUrl(audioUrl)) {
       setToast({
         type: "err",
-        text: "Enter a valid audio URL (.mp3/.wav/.ogg/.flac/.m4a/.aac/.opus)",
+        text: "Enter a valid audio URL (.mp3/.wav/.ogg/.flac/.m4a)",
       });
       return;
     }

@@ -28,7 +28,7 @@ function badgeClass(status: Transcription["status"]) {
   const base = "badge text-white";
   switch (status) {
     case "queued":
-      return `${base} badge-neutral`; // was badge-ghost
+      return `${base} badge-warning`; // was badge-ghost
     case "processing":
       return `${base} badge-info`;
     case "completed":
